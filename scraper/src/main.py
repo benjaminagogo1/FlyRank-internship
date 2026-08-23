@@ -31,6 +31,44 @@ class Parser(HTMLParser):
 def soup(html):
     p=Parser(); p.feed(html); return p.items
 
+class CatalogueParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.book_links = []
+        self.next_link = None
+        self._article_depth = 0
+        self._next_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        classes = attributes.get("class", "").split()
+        if tag == "article" and "product_pod" in classes:
+            self._article_depth += 1
+        elif self._article_depth and tag == "article":
+            self._article_depth += 1
+        if tag == "li" and "next" in classes:
+            self._next_depth += 1
+        elif self._next_depth and tag == "li":
+            self._next_depth += 1
+        if tag == "a" and attributes.get("href"):
+            if self._article_depth:
+                self.book_links.append(attributes["href"])
+            elif self._next_depth:
+                self.next_link = attributes["href"]
+
+    def handle_endtag(self, tag):
+        if tag == "article" and self._article_depth:
+            self._article_depth -= 1
+        if tag == "li" and self._next_depth:
+            self._next_depth -= 1
+
+def catalogue_links(html, page_url):
+    parser = CatalogueParser()
+    parser.feed(html)
+    book_urls = list(dict.fromkeys(urljoin(page_url, href) for href in parser.book_links))
+    next_url = urljoin(page_url, parser.next_link) if parser.next_link else None
+    return book_urls, next_url
+
 def fetch(url, path, stats, session):
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
@@ -78,20 +116,20 @@ def validate(r):
     r["price_gbp"]=float(m.group(1)); return r
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("--inject-failure", action="store_true"); args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument("--inject-failure", action="store_true"); ap.add_argument("--discover-only", action="store_true"); args=ap.parse_args()
     start=time.time(); stats={"pages_fetched":0,"cache_hits":0,"valid_records":0,"invalid_records":0,"failed_pages":0}
     CACHE.mkdir(exist_ok=True); OUTPUT.mkdir(exist_ok=True); s=requests.Session(); s.headers["User-Agent"]=UA
     urls=[]; catalogue=[]; next_url=START_CATALOGUE
     for n in range(1,4):
         page_url=next_url; html=fetch(page_url,CACHE/f"catalogue-page-{n}.html",stats,s); catalogue.append(page_url)
-        items=soup(html)
-        for _,a,_,_ in items:
-            href=a.get("href")
-            if href and "/book/" in urljoin(page_url,href): urls.append(urljoin(page_url,href))
-        nxt=next((a.get("href") for _,a,_,_ in items if a.get("class")=="next" or "next" in a.get("class","").split()),None)
-        if not nxt: break
-        next_url=urljoin(page_url,nxt)
-    urls=list(dict.fromkeys(urls))[:60]
+        page_books, next_url = catalogue_links(html, page_url)
+        urls.extend(page_books)
+        if not next_url: break
+    discovered = len(urls)
+    urls=list(dict.fromkeys(urls))
+    if args.discover_only:
+        print(f"catalogue_pages={len(catalogue)} discovered={discovered} unique_urls={len(urls)}")
+        return
     if args.inject_failure: urls.append(BASE+"catalogue/does-not-exist_9999/index.html")
     records=[]; errors=[]
     for u in urls:
@@ -101,9 +139,9 @@ def main():
         except Exception as e: stats["failed_pages"]+=1; errors.append({"product_url":u,"reason":str(e)})
     records={r["product_url"]:r for r in records}; records=list(records.values()); stats["valid_records"]=len(records); stats["invalid_records"]=len(errors)
     (OUTPUT/"books.json").write_text(json.dumps(records,indent=2),encoding="utf-8"); (OUTPUT/"errors.json").write_text(json.dumps(errors,indent=2),encoding="utf-8")
-    report={"started_at":datetime.fromtimestamp(start,timezone.utc).isoformat(),"duration_seconds":round(time.time()-start,2),**stats,"catalogue_pages":len(catalogue),"discovered":len(urls),"unique_urls":len(set(urls))}
+    report={"started_at":datetime.fromtimestamp(start,timezone.utc).isoformat(),"duration_seconds":round(time.time()-start,2),**stats,"catalogue_pages":len(catalogue),"discovered":discovered,"unique_urls":len(set(urls))}
     (OUTPUT/"run-report.json").write_text(json.dumps(report,indent=2),encoding="utf-8")
-    print(f"catalogue_pages={len(catalogue)} discovered={len(urls)} unique_urls={len(set(urls))} detail_pages={len(records)}")
+    print(f"catalogue_pages={len(catalogue)} discovered={discovered} unique_urls={len(set(urls))} detail_pages={len(records)}")
     if records: print(json.dumps(records[0],indent=2))
 
 if __name__ == "__main__": main()
