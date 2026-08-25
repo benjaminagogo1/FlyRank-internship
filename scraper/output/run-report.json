@@ -1,11 +1,11 @@
 {
-  "started_at": "2026-08-25T12:46:56.309434+00:00",
-  "duration_seconds": 9.13,
-  "pages_fetched": 1,
+  "started_at": "2026-08-25T13:28:39.097140+00:00",
+  "duration_seconds": 0.51,
+  "pages_fetched": 0,
   "cache_hits": 63,
   "valid_records": 60,
-  "invalid_records": 1,
-  "failed_pages": 1,
+  "invalid_records": 0,
+  "failed_pages": 0,
   "catalogue_pages": 3,
   "discovered": 60,
   "unique_urls": 60
