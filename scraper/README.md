@@ -6,8 +6,18 @@ This Python 3.10+ scraper targets [Books to Scrape](https://books.toscrape.com/)
 
 The one-time request to `https://books.toscrape.com/robots.txt` returned **HTTP 404 (no robots file found)**. A missing robots file is not permission to scrape, so this project remains limited to the assignment's sandbox and scope. I will not reuse this code on another site without checking its rules and terms first.
 
-The Python lane uses `requests`, HTML parsing, schema validation, and the standard JSON/filesystem libraries.
+The Python lane uses `requests`, a small standard-library HTML parser, and JSON/filesystem libraries. The `validate()` boundary is the schema validator: it requires all raw fields, normalizes `price_gbp`, checks URL/type constraints, and routes failures to `errors.json` before storage.
 
-Run from this directory with `python3 src/main.py`. The first run fetches and caches HTML; reruns use the cache. Requests identify themselves, time out after 12 seconds, and wait 500ms after successful live requests. Records are normalized and validated before `output/books.json`; failures go to `output/errors.json`, and every run writes `output/run-report.json`. Use `python3 src/main.py --inject-failure` to verify a deliberately broken URL is isolated.
+Run from this directory with `./run.sh`. The runner creates a local `.venv` and installs `requirements.txt`, avoiding Debian/Ubuntu's externally-managed system Python restriction. Direct execution is also possible after setup with `.venv/bin/python src/main.py`. The first run fetches and caches HTML; reruns use the cache. Requests identify themselves, time out after 12 seconds, and wait 500ms between live requests. Records are normalized and validated before `output/books.json`; failures go to `output/errors.json`, and every run writes `output/run-report.json`. Use `./run.sh --inject-failure` to verify a deliberately broken URL is isolated.
 
 No browser is needed: the data is already in the HTML sent by the server, so a browser would only add cost. Ethics: use an official API when one exists; never bypass logins, paywalls, or blocks; collect only what you need.
+
+## Record schema
+
+Every stored record has `title`, `product_url`, `price_text`, `availability_text`, `rating_text`, `description` (nullable), `source_page`, `fetched_at`, and numeric `price_gbp`. URLs are absolute HTTPS URLs and records are keyed by canonical product URL, so reruns remain idempotent.
+
+## Evidence
+
+Expected clean checkpoint: `catalogue_pages=3 discovered=60 unique_urls=60 detail_pages=60`. A rerun reads the cached catalogue/detail HTML and keeps 60 records. With `--inject-failure`, one deliberately fake URL is written to `errors.json`, `failed_pages` becomes 1, and the 60 valid records remain in `books.json`.
+
+The generated report contains `started_at`, `duration_seconds`, `pages_fetched`, `cache_hits`, `valid_records`, `invalid_records`, and `failed_pages`.
