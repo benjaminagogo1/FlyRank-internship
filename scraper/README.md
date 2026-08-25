@@ -6,7 +6,7 @@ This Python 3.10+ scraper targets [Books to Scrape](https://books.toscrape.com/)
 
 The one-time request to `https://books.toscrape.com/robots.txt` returned **HTTP 404 (no robots file found)**. A missing robots file is not permission to scrape, so this project remains limited to the assignment's sandbox and scope. I will not reuse this code on another site without checking its rules and terms first.
 
-The Python lane uses `requests`, a small standard-library HTML parser, and JSON/filesystem libraries. The `validate()` boundary is the schema validator: it requires all raw fields, normalizes `price_gbp`, checks URL/type constraints, and routes failures to `errors.json` before storage.
+The Python lane uses `requests`, a small standard-library HTML parser, Pydantic, and JSON/filesystem libraries. A Pydantic `BookRecord` schema requires all fields, checks types and URL constraints, and routes failures to `errors.json` before storage.
 
 Run from this directory with `./run.sh`. The runner creates a local `.venv` and installs `requirements.txt`, avoiding Debian/Ubuntu's externally-managed system Python restriction. Direct execution is also possible after setup with `.venv/bin/python src/main.py`. The first run fetches and caches HTML; reruns use the cache. Requests identify themselves, time out after 12 seconds, and wait 500ms between live requests. Records are normalized and validated before `output/books.json`; failures go to `output/errors.json`, and every run writes `output/run-report.json`. Use `./run.sh --inject-failure` to verify a deliberately broken URL is isolated.
 
