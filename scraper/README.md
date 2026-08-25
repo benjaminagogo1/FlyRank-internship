@@ -18,6 +18,25 @@ Every stored record has `title`, `product_url`, `price_text`, `availability_text
 
 ## Evidence
 
-Expected clean checkpoint: `catalogue_pages=3 discovered=60 unique_urls=60 detail_pages=60`. A rerun reads the cached catalogue/detail HTML and keeps 60 records. With `--inject-failure`, one deliberately fake URL is written to `errors.json`, `failed_pages` becomes 1, and the 60 valid records remain in `books.json`.
+Clean checkpoint: `catalogue_pages=3 discovered=60 unique_urls=60 detail_pages=60`. A rerun reads the cached catalogue/detail HTML and keeps 60 records. With `--inject-failure`, one deliberately fake URL is written to `errors.json`, `failed_pages` becomes 1, and the 60 valid records remain in `books.json`.
 
-The generated report contains `started_at`, `duration_seconds`, `pages_fetched`, `cache_hits`, `valid_records`, `invalid_records`, and `failed_pages`.
+Real failure-test report:
+
+```json
+{
+  "started_at": "2026-08-25T12:46:56.309434+00:00",
+  "duration_seconds": 9.13,
+  "pages_fetched": 1,
+  "cache_hits": 63,
+  "valid_records": 60,
+  "invalid_records": 1,
+  "failed_pages": 1,
+  "catalogue_pages": 3,
+  "discovered": 60,
+  "unique_urls": 60
+}
+```
+
+## Limitation
+
+The cache does not expire automatically, so deleting `cache/` is currently required when a fresh copy of the source pages is needed.
