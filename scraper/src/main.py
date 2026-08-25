@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-"""Polite Books to Scrape pipeline (stdlib + requests)."""
 from __future__ import annotations
 
 import argparse, json, re, time
